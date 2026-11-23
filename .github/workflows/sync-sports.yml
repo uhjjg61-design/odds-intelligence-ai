@@ -1,0 +1,40 @@
+name: Sync sports fixtures and odds
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      days_ahead:
+        description: "Days ahead to sync (0-7)"
+        required: false
+        default: "2"
+      odds_max_fixtures:
+        description: "Upcoming fixtures to check for odds (0-10)"
+        required: false
+        default: "3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sports-ingestion
+  cancel-in-progress: false
+
+jobs:
+  sync-football:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DAYS_AHEAD: ${{ inputs.days_ahead || '2' }}
+      ODDS_MAX_FIXTURES: ${{ inputs.odds_max_fixtures || '3' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Sync API-Football data to Supabase
+        run: python scripts/sync_api_football.py
