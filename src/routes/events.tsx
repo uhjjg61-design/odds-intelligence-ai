@@ -62,6 +62,7 @@ function Events() {
                 <th className="py-2 text-start font-medium">{t("الرياضة", "Sport")}</th>
                 <th className="py-2 text-start font-medium">{t("الدوري", "League")}</th>
                 <th className="py-2 text-start font-medium">{t("البداية", "Start")}</th>
+                <th className="py-2 text-start font-medium">{t("النتيجة", "Score")}</th>
                 <th className="py-2 text-start font-medium">{t("الأسواق", "Markets")}</th>
                 <th className="py-2 text-start font-medium">{t("الحالة", "Status")}</th>
               </tr></thead>
@@ -71,6 +72,7 @@ function Events() {
                   <td className="py-2.5">{sportLabel[e.sport]}</td>
                   <td className="py-2.5 text-muted-foreground">{e.league}</td>
                   <td className="py-2.5 text-muted-foreground whitespace-nowrap">{fmt(e.startsAt)}</td>
+                  <td className="py-2.5 font-semibold num">{e.homeScore != null && e.awayScore != null ? `${e.homeScore} – ${e.awayScore}` : "—"}</td>
                   <td className="py-2.5 num">{e.markets}</td>
                   <td className="py-2.5"><StatusDot status={e.status} /></td>
                 </tr>))}</tbody>
