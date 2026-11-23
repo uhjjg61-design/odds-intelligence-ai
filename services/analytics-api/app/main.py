@@ -206,3 +206,120 @@ async def sync_api_football_fixtures(
         "persisted_to_supabase": True,
         "note": "Fixture sync only. Odds endpoints and model predictions are not populated by this operation.",
     }
+
+
+@app.post("/v1/providers/api-football/sync-odds")
+async def sync_api_football_odds(
+    fixture_id: int,
+    x_ingest_token: str = "",
+):
+    expected_token = os.getenv("INGEST_API_TOKEN", "")
+    api_key = os.getenv("API_FOOTBALL_KEY", "")
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not expected_token or not hmac.compare_digest(x_ingest_token, expected_token):
+        raise HTTPException(status_code=401, detail="Invalid ingestion token")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="API_FOOTBALL_KEY is not configured")
+    if not supabase_url or not service_key:
+        raise HTTPException(status_code=503, detail="Server-side Supabase credentials are not configured")
+
+    db_headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
+    async with httpx.AsyncClient(timeout=25) as client:
+        event_response = await client.get(
+            f"{supabase_url}/rest/v1/events",
+            params={"select": "id", "source_name": "eq.api-football", "provider_key": f"eq.{fixture_id}", "limit": "1"},
+            headers=db_headers,
+        )
+        if event_response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Could not find the fixture in Supabase")
+        event_rows = event_response.json()
+        if not event_rows:
+            raise HTTPException(status_code=404, detail="Sync the fixture before syncing its odds")
+        event_id = event_rows[0]["id"]
+
+        upstream = await client.get(
+            "https://v3.football.api-sports.io/odds",
+            params={"fixture": fixture_id},
+            headers={"x-apisports-key": api_key},
+        )
+        if upstream.status_code != 200:
+            raise HTTPException(status_code=502, detail="Sports provider odds request failed")
+        payload = upstream.json()
+        if payload.get("errors"):
+            raise HTTPException(status_code=502, detail="Sports provider returned an odds error")
+
+        market_rows = []
+        source_by_market = {}
+        for record in payload.get("response", []):
+            for bookmaker in record.get("bookmakers", []):
+                bookmaker_name = bookmaker.get("name") or f"Bookmaker {bookmaker.get('id', 'unknown')}"
+                bookmaker_id = bookmaker.get("id", "unknown")
+                for bet in bookmaker.get("bets", []):
+                    bet_name = bet.get("name") or f"Market {bet.get('id', 'unknown')}"
+                    market_type = f"{bookmaker_name} | {bet_name}"
+                    for item in bet.get("values", []):
+                        selection = str(item.get("value") or "").strip()
+                        try:
+                            odd = float(item.get("odd"))
+                        except (TypeError, ValueError):
+                            continue
+                        if not selection or not math.isfinite(odd) or odd <= 1:
+                            continue
+                        market_rows.append({
+                            "event_id": event_id,
+                            "market_type": market_type,
+                            "selection": selection,
+                            "line": 0,
+                            "active": True,
+                        })
+                        source_by_market[(market_type, selection)] = (f"api-football:{bookmaker_id}", odd)
+
+        if not market_rows:
+            return {"fixture_id": fixture_id, "markets_received": 0, "odds_snapshots_saved": 0, "note": "No odds were returned for this fixture and provider plan."}
+
+        market_save = await client.post(
+            f"{supabase_url}/rest/v1/markets",
+            params={"on_conflict": "event_id,market_type,selection,line"},
+            headers={**db_headers, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"},
+            json=market_rows,
+        )
+        if market_save.status_code not in (200, 201, 204):
+            raise HTTPException(status_code=502, detail="Could not persist odds markets")
+
+        market_response = await client.get(
+            f"{supabase_url}/rest/v1/markets",
+            params={"select": "id,market_type,selection", "event_id": f"eq.{event_id}"},
+            headers=db_headers,
+        )
+        if market_response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Could not reload saved markets")
+        market_ids = {(row["market_type"], row["selection"]): row["id"] for row in market_response.json()}
+        captured_at = datetime.now(timezone.utc).isoformat()
+        snapshots = []
+        for key, (source_name, odd) in source_by_market.items():
+            market_id = market_ids.get(key)
+            if market_id:
+                snapshots.append({
+                    "market_id": market_id,
+                    "source_name": source_name,
+                    "decimal_odds": odd,
+                    "captured_at": captured_at,
+                    "is_live": False,
+                    "raw_payload": {"provider": "API-Football", "fixture_id": fixture_id},
+                })
+        snapshot_save = await client.post(
+            f"{supabase_url}/rest/v1/odds_snapshots",
+            headers={**db_headers, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            json=snapshots,
+        )
+        if snapshot_save.status_code not in (200, 201, 204):
+            raise HTTPException(status_code=502, detail="Could not persist odds snapshots")
+
+    return {
+        "fixture_id": fixture_id,
+        "markets_received": len(market_rows),
+        "odds_snapshots_saved": len(snapshots),
+        "source": "API-Football",
+        "note": "Odds availability depends on the provider plan and fixture coverage. Snapshots are timestamped and are not predictions.",
+    }
