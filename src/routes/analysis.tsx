@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { opportunitiesQuery } from "@/lib/api";
+import { IS_DEMO, opportunitiesQuery } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { pageHead } from "@/lib/seo";
 import { EmptyState, PageHeader, Panel } from "@/components/app/ui-bits";
@@ -27,10 +27,16 @@ function Analysis() {
   return (
     <>
       <PageHeader title={t("تحليل الذكاء الاصطناعي", "AI Analysis")} subtitle={t("إشارات مرشحة مع شرح للمنهجية. النموذج يقدّر احتمالات ولا يتنبأ بالنتائج بيقين.", "Candidate signals with methodology notes. The model estimates probabilities; it does not predict outcomes with certainty.")} />
-      <div className="mb-4 grid gap-4 lg:grid-cols-2">
-        <Panel title={t("معايرة النموذج", "Model calibration")}><CalibrationChart labels={{ predicted: t("مثالي", "Perfect"), observed: t("ملاحظ", "Observed") }} /></Panel>
-        <Panel title={t("توزيع الإشارات", "Signal distribution")}><SignalDistributionChart label={t("عدد", "Count")} /></Panel>
-      </div>
+      {IS_DEMO ? (
+        <div className="mb-4 grid gap-4 lg:grid-cols-2">
+          <Panel title={t("معايرة النموذج — بيانات تجريبية", "Model calibration — demo data")}><CalibrationChart labels={{ predicted: t("مثالي", "Perfect"), observed: t("ملاحظ", "Observed") }} /></Panel>
+          <Panel title={t("توزيع الإشارات — بيانات تجريبية", "Signal distribution — demo data")}><SignalDistributionChart label={t("عدد", "Count")} /></Panel>
+        </div>
+      ) : (
+        <Panel className="mb-4">
+          <p className="text-sm text-muted-foreground">{t("لن نعرض معايرة أو توزيعاً مصطنعاً. ستظهر هذه المؤشرات بعد جمع تنبؤات فعلية وربطها بنتائج المباريات المكتملة.", "Synthetic calibration charts are hidden. These metrics will appear after real predictions are linked to completed match outcomes.")}</p>
+        </Panel>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground" />
