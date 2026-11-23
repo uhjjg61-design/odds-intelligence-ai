@@ -1,0 +1,46 @@
+name: Sync live basketball games
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: basketball-live-ingestion
+  cancel-in-progress: false
+
+jobs:
+  sync-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_BASKETBALL_KEY: ${{ secrets.API_BASKETBALL_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SYNC_MODE: live
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check provider credentials
+        id: preflight
+        shell: bash
+        run: |
+          if [[ -n "${API_BASKETBALL_KEY:-}" && -n "${SUPABASE_URL:-}" && -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Basketball sync skipped. Configure API_BASKETBALL_KEY, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+          fi
+      - name: Set up Python
+        if: steps.preflight.outputs.configured == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Sync today's basketball games
+        if: steps.preflight.outputs.configured == 'true'
+        run: python scripts/sync_api_basketball.py
