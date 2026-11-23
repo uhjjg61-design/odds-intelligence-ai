@@ -17,6 +17,12 @@ type DbEvent = {
   away_name: string;
   starts_at: string;
   status: "scheduled" | "live" | "finished" | "cancelled" | "postponed";
+  home_score: number | null;
+  away_score: number | null;
+  halftime_home_score: number | null;
+  halftime_away_score: number | null;
+  elapsed_minutes: number | null;
+  source_updated_at: string | null;
   leagues?: { name: string } | null;
   markets?: { id: string }[];
 };
@@ -36,7 +42,7 @@ async function fetchEvents(): Promise<demo.SportEvent[]> {
   if (!isSupabaseConfigured) return demo.events;
   const rows = await supabaseSelect<DbEvent>(
     "events",
-    "select=id,sport_id,home_name,away_name,starts_at,status,leagues(name),markets(id)&order=starts_at.asc&limit=100",
+    "select=id,sport_id,home_name,away_name,starts_at,status,home_score,away_score,halftime_home_score,halftime_away_score,elapsed_minutes,source_updated_at,leagues(name),markets(id)&order=starts_at.desc&limit=500",
   );
   return rows.map((row) => ({
     id: row.id,
@@ -45,8 +51,14 @@ async function fetchEvents(): Promise<demo.SportEvent[]> {
     home: row.home_name,
     away: row.away_name,
     startsAt: row.starts_at,
-    status: row.status === "cancelled" || row.status === "postponed" ? "scheduled" : row.status,
+    status: row.status,
     markets: row.markets?.length ?? 0,
+    homeScore: row.home_score,
+    awayScore: row.away_score,
+    halftimeHomeScore: row.halftime_home_score,
+    halftimeAwayScore: row.halftime_away_score,
+    elapsedMinutes: row.elapsed_minutes,
+    sourceUpdatedAt: row.source_updated_at,
   }));
 }
 
