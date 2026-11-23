@@ -57,6 +57,27 @@ def provider_get(path: str, params: dict):
     return result
 
 
+def provider_get_all(path: str, params: dict, max_pages: int = 10) -> list[dict]:
+    """Read every provider page while keeping a hard request cap per endpoint."""
+    collected = []
+    current = 0
+    total = 1
+    for page in range(1, max_pages + 1):
+        result = provider_get(path, {**params, "page": page})
+        collected.extend(result.get("response") or [])
+        paging = result.get("paging") or {}
+        current = int(paging.get("current") or page)
+        total = int(paging.get("total") or current)
+        if current >= total:
+            return collected
+    if current < total:
+        raise RuntimeError(
+            f"Provider pagination exceeded the safety cap ({max_pages} pages); "
+            "narrow the leagues or date range before increasing the cap."
+        )
+    return collected
+
+
 def db_request(table: str, params: dict, payload=None, prefer="return=representation", method=None):
     query = urlencode(params, doseq=True)
     headers = {
@@ -161,14 +182,12 @@ def sync_fixture_batch(fixtures: list[dict], label: str) -> int:
 
 
 def sync_live() -> int:
-    result = provider_get("fixtures", {"live": "all"})
-    fixtures = result.get("response") or []
+    fixtures = provider_get_all("fixtures", {"live": "all"})
     return sync_fixture_batch(fixtures, "live")
 
 
 def sync_day(day: date) -> list[dict]:
-    result = provider_get("fixtures", {"date": day.isoformat()})
-    fixtures = result.get("response") or []
+    fixtures = provider_get_all("fixtures", {"date": day.isoformat()})
     sync_fixture_batch(fixtures, day.isoformat())
     return fixtures
 
