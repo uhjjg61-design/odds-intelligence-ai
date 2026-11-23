@@ -18,6 +18,7 @@ BASKETBALL_KEY = os.environ["API_BASKETBALL_KEY"]
 LOCAL_TZ = os.getenv("SPORTS_TIMEZONE", "Africa/Casablanca")
 HISTORY_DAYS = max(0, min(int(os.getenv("HISTORY_DAYS", "7")), 30))
 DAYS_AHEAD = max(0, min(int(os.getenv("DAYS_AHEAD", "3")), 7))
+ODDS_MAX_GAMES = max(0, min(int(os.getenv("ODDS_MAX_GAMES", "2")), 5))
 SYNC_MODE = os.getenv("SYNC_MODE", "history").lower()
 TIMEOUT = 30
 
@@ -193,6 +194,61 @@ def sync_day(day: date) -> list[dict]:
     return fixtures
 
 
+def sync_odds(game_id: int, event_id: str) -> int:
+    result = provider_get("odds", {"game": game_id})
+    markets, odds = {}, {}
+    for record in result.get("response") or []:
+        bookmakers = record.get("bookmakers") or []
+        for bookmaker in bookmakers:
+            bookmaker_id = bookmaker.get("id", "unknown")
+            bookmaker_name = bookmaker.get("name") or f"Bookmaker {bookmaker_id}"
+            for bet in bookmaker.get("bets") or []:
+                market_type = f"{bookmaker_name} | {bet.get('name') or bet.get('id')}"
+                for value in bet.get("values") or []:
+                    selection = str(value.get("value") or "").strip()
+                    try:
+                        odd = float(value.get("odd"))
+                    except (TypeError, ValueError):
+                        continue
+                    if not selection or odd <= 1:
+                        continue
+                    key = (market_type, selection)
+                    markets[key] = {
+                        "event_id": event_id,
+                        "market_type": market_type,
+                        "selection": selection,
+                        "line": 0,
+                        "active": True,
+                    }
+                    odds[key] = (f"api-basketball:{bookmaker_id}", odd)
+
+    if not markets:
+        return 0
+    saved = db_request(
+        "markets",
+        {"on_conflict": "event_id,market_type,selection,line"},
+        list(markets.values()),
+        "resolution=merge-duplicates,return=representation",
+    )
+    ids = {(row["market_type"], row["selection"]): row["id"] for row in (saved or [])}
+    captured = datetime.now(timezone.utc).isoformat()
+    snapshots = []
+    for key, (source, price) in odds.items():
+        if key in ids:
+            snapshots.append({
+                "market_id": ids[key],
+                "source_name": source,
+                "decimal_odds": price,
+                "captured_at": captured,
+                "is_live": False,
+                "raw_payload": {"provider": "API-Basketball", "game_id": game_id},
+            })
+    if snapshots:
+        db_request("odds_snapshots", {}, snapshots, "return=minimal")
+    print(f"Basketball game {game_id}: stored {len(snapshots)} pre-match odds snapshots")
+    return len(snapshots)
+
+
 def mark_source(status: str, metadata: dict, error: str | None = None):
     db_request(
         "data_sources",
@@ -223,13 +279,45 @@ def main():
                 "today/live",
             )
         elif SYNC_MODE in {"history", "full"}:
-            total = 0
+            fixtures_by_id = {}
             for offset in range(-HISTORY_DAYS, DAYS_AHEAD + 1):
-                total += len(sync_day(today + timedelta(days=offset)))
+                for item in sync_day(today + timedelta(days=offset)):
+                    if item.get("id") is not None:
+                        fixtures_by_id[int(item["id"])] = item
+
+            odds_count = 0
+            now = datetime.now(timezone.utc)
+            upcoming = []
+            for game_id, item in fixtures_by_id.items():
+                try:
+                    starts = datetime.fromisoformat(item.get("date", "").replace("Z", "+00:00"))
+                except ValueError:
+                    continue
+                short = ((item.get("status") or {}).get("short") or "NS").upper()
+                if starts >= now and short == "NS":
+                    upcoming.append((starts, game_id))
+            upcoming.sort()
+            for _, game_id in upcoming[:ODDS_MAX_GAMES]:
+                rows = db_request(
+                    "events",
+                    {
+                        "select": "id",
+                        "source_name": "eq.api-basketball",
+                        "provider_key": f"eq.{game_id}",
+                        "limit": "1",
+                    },
+                )
+                if rows:
+                    try:
+                        odds_count += sync_odds(game_id, rows[0]["id"])
+                    except RuntimeError as exc:
+                        print(f"Basketball odds skipped for game {game_id}: {exc}")
+
             metadata.update({
                 "history_days": HISTORY_DAYS,
                 "days_ahead": DAYS_AHEAD,
-                "fixtures_received": total,
+                "fixtures_received": len(fixtures_by_id),
+                "odds_snapshots_saved": odds_count,
             })
             if SYNC_MODE == "full":
                 metadata["today_games_upserted"] = sync_fixture_batch(
