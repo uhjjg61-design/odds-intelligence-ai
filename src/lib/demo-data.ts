@@ -91,8 +91,8 @@ export type DataSource = {
   rateLimit: string; used: number; lastSync: string | null; coverage: string;
 };
 export const dataSources: DataSource[] = [
-  { id: "s1", name: "Demo Feed A (sample odds)", kind: "internal", status: "operational", rateLimit: "600 / hr", used: 0.34, lastSync: iso(-0.1), coverage: "Football, Basketball" },
-  { id: "s2", name: "Demo Feed B (sample odds)", kind: "internal", status: "degraded", rateLimit: "300 / hr", used: 0.82, lastSync: iso(-1.4), coverage: "Tennis, Football" },
+  { id: "s1", name: "Synthetic Demo Feed A (not live)", kind: "internal", status: "not_configured", rateLimit: "—", used: 0, lastSync: null, coverage: "Sample only" },
+  { id: "s2", name: "Synthetic Demo Feed B (not live)", kind: "internal", status: "not_configured", rateLimit: "—", used: 0, lastSync: null, coverage: "Sample only" },
   { id: "s3", name: "Licensed odds provider", kind: "licensed", status: "not_configured", rateLimit: "—", used: 0, lastSync: null, coverage: "—" },
   { id: "s4", name: "Official league stats API", kind: "official", status: "not_configured", rateLimit: "—", used: 0, lastSync: null, coverage: "—" },
 ];
