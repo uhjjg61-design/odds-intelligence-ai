@@ -24,7 +24,7 @@ if origins:
         allow_origins=origins,
         allow_credentials=False,
         allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-Ingest-Token"],
     )
 
 
@@ -212,7 +212,7 @@ async def sync_api_football_fixtures(
 @app.post("/v1/providers/api-football/sync-odds")
 async def sync_api_football_odds(
     fixture_id: int,
-    x_ingest_token: str = "",
+    x_ingest_token: str = Header(default="", alias="X-Ingest-Token"),
 ):
     expected_token = os.getenv("INGEST_API_TOKEN", "")
     api_key = os.getenv("API_FOOTBALL_KEY", "")
@@ -342,7 +342,7 @@ def telegram_status():
 @app.post("/v1/notifications/telegram/test")
 async def telegram_test(
     payload: TelegramTestRequest,
-    x_ingest_token: str = "",
+    x_ingest_token: str = Header(default="", alias="X-Ingest-Token"),
 ):
     expected_token = os.getenv("INGEST_API_TOKEN", "")
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
