@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Database, ExternalLink, ShieldCheck } from "lucide-react";
+import { Database, ShieldCheck } from "lucide-react";
 import { PageHeader, Panel, Stat, StatusDot, Warning } from "@/components/app/ui-bits";
 import { dataSources } from "@/lib/demo-data";
 import { useI18n } from "@/lib/i18n";
