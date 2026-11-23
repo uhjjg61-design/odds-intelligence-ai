@@ -207,7 +207,7 @@ def main():
                     odds_count += sync_odds(fixture_id, rows[0]["id"])
                 except RuntimeError as exc:
                     print(f"Odds sync skipped for fixture {fixture_id}: {exc}")
-    db_request("data_sources", {"source_key": "eq.api-football"}, [{
+    db_request("data_sources", {"source_key": "eq.api-football"}, {
         "status": "operational",
         "last_sync_at": datetime.now(timezone.utc).isoformat(),
         "last_error": None,
@@ -217,7 +217,7 @@ def main():
             "fixtures_received": len(all_fixtures),
             "odds_snapshots_saved": odds_count,
         },
-    }], "return=minimal", "PATCH")
+    }, "return=minimal", "PATCH")
     print(f"Completed: {len(all_fixtures)} fixture records; {odds_count} odds snapshots.")
 
 
@@ -227,9 +227,9 @@ if __name__ == "__main__":
     except Exception as exc:
         print(f"INGESTION FAILED: {exc}", file=sys.stderr)
         try:
-            db_request("data_sources", {"source_key": "eq.api-football"}, [{
+            db_request("data_sources", {"source_key": "eq.api-football"}, {
                 "status": "degraded", "last_error": str(exc)[:1000],
-            }], "return=minimal", "PATCH")
+            }, "return=minimal", "PATCH")
         except Exception:
             pass
         raise
