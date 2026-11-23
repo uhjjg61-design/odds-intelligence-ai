@@ -183,7 +183,7 @@ async def sync_api_football_fixtures(
 
         await client.patch(
             f"{supabase_url}/rest/v1/data_sources",
-            params={"source_key": "eq.api-football"},
+            params={"source_key": "eq.licensed-odds"},
             headers={
                 "apikey": service_key,
                 "Authorization": f"Bearer {service_key}",
@@ -191,6 +191,7 @@ async def sync_api_football_fixtures(
                 "Prefer": "return=minimal",
             },
             json={
+                "display_name": "API-Football fixtures",
                 "status": "operational",
                 "last_sync_at": datetime.now(timezone.utc).isoformat(),
                 "last_error": None,
