@@ -1,0 +1,43 @@
+name: Sync live sports data
+on:
+  workflow_dispatch:
+    inputs:
+      days_ahead:
+        description: "Number of days ahead to sync (0-7)"
+        required: false
+        default: "2"
+      odds_max_fixtures:
+        description: "Maximum upcoming fixtures to request odds for (0-10)"
+        required: false
+        default: "3"
+  schedule:
+    - cron: "17 */6 * * *"
+permissions:
+  contents: read
+concurrency:
+  group: sports-data-ingestion
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DAYS_AHEAD: ${{ github.event.inputs.days_ahead || '2' }}
+      ODDS_MAX_FIXTURES: ${{ github.event.inputs.odds_max_fixtures || '3' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate required secrets
+        run: |
+          test -n "$API_FOOTBALL_KEY" || (echo "Missing API_FOOTBALL_KEY secret" && exit 1)
+          test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL secret" && exit 1)
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing SUPABASE_SERVICE_ROLE_KEY secret" && exit 1)
+      - name: Sync fixtures and available odds
+        run: python scripts/sync_api_football.py
