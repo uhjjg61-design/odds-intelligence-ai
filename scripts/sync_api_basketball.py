@@ -39,7 +39,7 @@ def provider_get(path: str, params: dict) -> dict:
     params = {**params, "timezone": LOCAL_TZ}
     result = request_json(
         f"{API_BASE}/{path}?{urlencode(params)}",
-        {"x-apisports-key": BASKETBALL_KEY, "Accept": "application/json"},
+        {"x-apisports-key": BASKETBALL_KEY},
     )
     if not isinstance(result, dict):
         raise RuntimeError(f"Unexpected API-Basketball response for {path}")
@@ -170,7 +170,7 @@ def sync_fixture_batch(fixtures: list[dict], label: str) -> int:
             "away_score": away_score,
             "period_scores": period_scores(scores),
             "venue": venue if isinstance(venue, str) else (venue or {}).get("name"),
-            "round": item.get("stage") or item.get("week"),
+            "round": str(item.get("stage") or item.get("week")) if item.get("stage") or item.get("week") is not None else None,
             "raw_payload": item,
             "source_name": "api-basketball",
             "source_updated_at": datetime.now(timezone.utc).isoformat(),
