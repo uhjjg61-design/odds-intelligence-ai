@@ -61,3 +61,8 @@ def test_provider_status_never_exposes_credentials():
 def test_fixture_sync_requires_ingestion_token():
     response = client.post("/v1/providers/api-football/sync-fixtures?sync_date=2026-11-23")
     assert response.status_code == 401
+
+
+def test_odds_sync_requires_ingestion_token():
+    response = client.post("/v1/providers/api-football/sync-odds?fixture_id=123")
+    assert response.status_code == 401
