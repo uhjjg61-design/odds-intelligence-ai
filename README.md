@@ -8,7 +8,7 @@ Arabic-first sports analytics dashboard with an analysis-only design. **No bets 
 - Overview, live monitor, sports/events, markets, AI analysis, historical performance, alerts, data sources and settings pages.
 - Alerts can be filtered and marked read in the current browser session; preferences can be saved locally in the current browser.
 - Synthetic sample data is visibly labeled as demo data. It is not real odds, not live data, and not validated predictive performance.
-- Supabase PostgreSQL is enabled for the Lovable project. The schema and RLS policies are in `supabase/migrations/`.
+- Supabase PostgreSQL is hosted in a separate Supabase project (not Lovable-managed). The schema and RLS policies are in `supabase/migrations/`.
 - A separate FastAPI analytics service is available under `services/analytics-api`, with a Poisson football baseline and probability/EV evaluation endpoints.
 - GitHub Actions CI runs frontend lint, tests, production build, and analytics API tests.
 
@@ -18,12 +18,12 @@ This repository is **not yet a live production analytics platform**. Before call
 
 1. Connect a licensed/official sports data provider and configure its credentials as server-side secrets.
 2. Deploy the FastAPI service and set `VITE_ANALYTICS_API_URL` in the frontend hosting environment.
-3. Configure secure Supabase connection variables for the backend worker. Never expose `SUPABASE_SERVICE_ROLE_KEY` in browser code.
+3. Add GitHub Actions repository secrets `API_FOOTBALL_KEY`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` to enable scheduled football fixture/odds ingestion. Never expose `SUPABASE_SERVICE_ROLE_KEY` in browser code.
 4. Add authentication before enabling user-specific alerts/settings across devices.
-5. Implement a scheduled ingestion worker, provider rate-limit handling, timestamp/source provenance, deduplication and monitoring.
+5. The scheduled workflow in `.github/workflows/sync-sports.yml` runs every six hours and calls `scripts/sync_api_football.py`. It syncs a limited upcoming window and a small number of odds fixtures; it remains inactive until the three GitHub secrets above are configured. Review API-Football plan quotas before increasing its schedule.
 6. Add walk-forward backtests, probability calibration, out-of-sample validation, and model drift monitoring.
 7. Configure Telegram only after the backend deployment is secured; store bot credentials in server-side secrets.
-8. Connect GitHub sync in Lovable so repository changes are reflected in the Lovable project preview, then verify a fresh preview build.
+8. Configure a separate API-Basketball data credential before enabling basketball ingestion; football credentials do not automatically enable basketball coverage.
 
 ## Stack
 
