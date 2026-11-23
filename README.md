@@ -1,63 +1,94 @@
 # Odds Intelligence AI
 
-Arabic-first sports odds analytics dashboard. **Analysis only — no bets are placed or executed.**
+Arabic-first sports analytics dashboard with an analysis-only design. **No bets are placed or executed, no bookmaker accounts are accessed, and no money is moved.**
 
-## Current status
+## Current implementation status
 
-This repository mirrors the current Lovable prototype. It uses **synthetic demo data only**; no live bookmaker feed or licensed provider is connected. The UI and sample metrics are for demonstration and are not validated predictive performance. Do not interpret sample signals as betting advice or guaranteed outcomes.
+- React 19 + TypeScript dashboard with Arabic RTL / English LTR.
+- Overview, live monitor, sports/events, markets, AI analysis, historical performance, alerts, data sources and settings pages.
+- Alerts can be filtered and marked read in the current browser session; preferences can be saved locally in the current browser.
+- Synthetic sample data is visibly labeled as demo data. It is not real odds, not live data, and not validated predictive performance.
+- Supabase PostgreSQL is enabled for the Lovable project. The schema and RLS policies are in `supabase/migrations/`.
+- A separate FastAPI analytics service is available under `services/analytics-api`, with a Poisson football baseline and probability/EV evaluation endpoints.
+- GitHub Actions CI runs frontend lint, tests, production build, and analytics API tests.
 
-The Lovable build stopped after the workspace ran out of credits. Core dashboard pages are present; Alerts, Data Sources, and Settings currently contain placeholders. Automated build, lint, and test verification has not yet been completed.
+## Important remaining production requirements
+
+This repository is **not yet a live production analytics platform**. Before calling it production-ready:
+
+1. Connect a licensed/official sports data provider and configure its credentials as server-side secrets.
+2. Deploy the FastAPI service and set `VITE_ANALYTICS_API_URL` in the frontend hosting environment.
+3. Configure secure Supabase connection variables for the backend worker. Never expose `SUPABASE_SERVICE_ROLE_KEY` in browser code.
+4. Add authentication before enabling user-specific alerts/settings across devices.
+5. Implement a scheduled ingestion worker, provider rate-limit handling, timestamp/source provenance, deduplication and monitoring.
+6. Add walk-forward backtests, probability calibration, out-of-sample validation, and model drift monitoring.
+7. Configure Telegram only after the backend deployment is secured; store bot credentials in server-side secrets.
+8. Connect GitHub sync in Lovable so repository changes are reflected in the Lovable project preview, then verify a fresh preview build.
 
 ## Stack
 
-- React 19 + TypeScript
-- TanStack Start / Router
-- Tailwind CSS
-- shadcn-style Radix UI components
-- Recharts
-- Vitest
+- Frontend: React 19, TypeScript, TanStack Start/Router, Tailwind CSS, Recharts, Vitest.
+- Database: Supabase PostgreSQL with row-level security.
+- Analytics API: Python 3.12, FastAPI, Pydantic, pytest.
+- CI: GitHub Actions with Bun and Python.
 
 ## Local development
 
-Requirements: Node.js 20+ and npm (or Bun).
+### Frontend
+
+Requirements: Bun (see `bun.lock`).
 
 ```bash
-npm install
-npm run dev
+bun install --frozen-lockfile
+bun run dev
 ```
 
 Checks:
 
 ```bash
-npm run lint
-npm test
-npm run build
+bun run lint
+bun run test
+bun run build
 ```
 
-## Architecture notes
+### Analytics API
 
-- `src/lib/demo-data.ts`: deterministic synthetic sample events, odds, model metrics and charts.
-- `src/lib/odds.ts`: pure probability and evaluation helpers (implied probability, expected value, Brier score, log loss).
-- `src/lib/api.ts`: data access abstraction; intended integration point for a future analytics API.
-- `src/lib/i18n.tsx`: Arabic/English language state and RTL/LTR direction.
-- `src/routes/`: dashboard pages.
-- `src/components/app/`: application shell, reusable cards and charts.
+```bash
+cd services/analytics-api
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
-## Planned integrations (not yet configured)
+API documentation is available at `/docs`; health check at `/health`.
 
-1. Connect only licensed/official sports data providers, with source attribution, timestamps, rate-limit handling and historical snapshots.
-2. Add a separate FastAPI service for collection, normalization, model inference and backtesting.
-3. Add Supabase/PostgreSQL for users, provider metadata, events, odds snapshots, predictions, alerts and audit history.
-4. Configure Telegram notifications using server-side secrets only; never expose bot tokens in client code.
-5. Add CI for type-checking, linting, unit/integration tests and backtesting regression checks.
+## API endpoints
 
-## Safety and statistical limitations
+- `GET /health`
+- `POST /v1/models/football/poisson`
+- `POST /v1/evaluate`
 
-- No wagering execution, bookmaker account credentials, deposits, withdrawals or money movement.
-- No guaranteed-profit claims. Model probabilities require calibration and out-of-sample validation.
-- Roulette, Crash and other RNG games are not predictable from historical outcomes. Any future support must be limited to theoretical RTP, statistical distributions and anomaly monitoring.
-- Historical ROI, if later added, must be clearly labeled as paper-trading simulation and include uncertainty, fees, sample size and drawdown.
+The Poisson model is a transparent baseline, not a calibrated production model. It does not include a Dixon-Coles correction. Inputs must come from validated, timestamped sources before use.
+
+## Supabase
+
+- Migration: `supabase/migrations/202611230001_initial_schema.sql`
+- Tables cover sports, leagues, events, markets, odds snapshots, model runs, predictions, data sources, user alerts, user settings and audit logs.
+- Public access is read-only for non-user data; user alerts/settings are scoped by `auth.uid()`.
+- Service-role credentials must be used only by trusted server-side workers.
+
+## Environment variables
+
+See `.env.example`. Browser variables must contain only public values. Provider tokens, Telegram bot tokens and Supabase service-role keys must be stored only in deployment secret storage.
+
+## Statistical and responsible-use limitations
+
+- Expected value is an estimate and depends on probability calibration, source quality, market timing and omitted costs.
+- Minimum sample size warnings are required; a positive estimated edge is not a guarantee or a recommendation to wager.
+- ROI and drawdown charts, if used, must be labeled as paper-trading simulation and include sample size, uncertainty and costs.
+- Roulette, Crash and other RNG games cannot be predicted from past outcomes. Any future support is limited to theoretical RTP, statistical distributions and anomaly monitoring.
 
 ## License
 
-No license has been selected yet. All rights reserved by the repository owner unless a license is added.
+No license has been selected. All rights reserved by the repository owner unless a license is added.
