@@ -1,0 +1,62 @@
+name: Sync historical football results and odds
+
+on:
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_dispatch:
+    inputs:
+      history_days:
+        description: "Days of historical fixtures to refresh (0-30)"
+        required: false
+        default: "7"
+      days_ahead:
+        description: "Upcoming days to sync (0-7)"
+        required: false
+        default: "3"
+      odds_max_fixtures:
+        description: "Upcoming fixtures to request odds for (0-5)"
+        required: false
+        default: "2"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: football-history-ingestion
+  cancel-in-progress: false
+
+jobs:
+  sync-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SYNC_MODE: history
+      HISTORY_DAYS: ${{ inputs.history_days || '7' }}
+      DAYS_AHEAD: ${{ inputs.days_ahead || '3' }}
+      ODDS_MAX_FIXTURES: ${{ inputs.odds_max_fixtures || '2' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check provider credentials
+        id: preflight
+        shell: bash
+        run: |
+          if [[ -n "${API_FOOTBALL_KEY:-}" && -n "${SUPABASE_URL:-}" && -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Historical sync skipped. Configure API_FOOTBALL_KEY, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in repository Actions secrets."
+          fi
+      - name: Set up Python
+        if: steps.preflight.outputs.configured == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Sync historical results and upcoming odds
+        if: steps.preflight.outputs.configured == 'true'
+        run: python scripts/sync_api_football.py
