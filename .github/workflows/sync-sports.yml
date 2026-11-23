@@ -36,5 +36,16 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      - name: Check whether provider credentials are configured
+        id: preflight
+        shell: bash
+        run: |
+          if [[ -n "${API_FOOTBALL_KEY:-}" && -n "${SUPABASE_URL:-}" && -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Ingestion skipped. Add API_FOOTBALL_KEY, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY as repository Actions secrets."
+          fi
       - name: Sync API-Football data to Supabase
+        if: steps.preflight.outputs.configured == 'true'
         run: python scripts/sync_api_football.py
