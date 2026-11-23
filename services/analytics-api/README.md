@@ -17,7 +17,7 @@ Open `/docs` for the OpenAPI interface and `/health` for the health check.
 
 - `GET /health`
 - `POST /v1/models/football/poisson` — independent Poisson score-grid baseline.
-- `POST /v1/evaluate` — implied probability, probability edge, estimated EV and minimum-sample warning.
+- `POST /v1/evaluate` — implied probability, probability edge, estimated EV and minimum-sample warning.\n- `GET /v1/providers/api-football/status` — provider readiness without exposing secrets.\n- `POST /v1/providers/api-football/sync-fixtures?sync_date=YYYY-MM-DD` — protected fixture ingestion into Supabase (requires `x-ingest-token`).
 
 Expected-goals inputs must be sourced from a licensed/official feed and validated before use. The Poisson implementation is a baseline, not a production-calibrated prediction model. Add walk-forward validation, calibration monitoring, data provenance and provider-specific rate limits before production use.
 
