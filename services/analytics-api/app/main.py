@@ -183,7 +183,7 @@ async def sync_api_football_fixtures(
 
         await client.patch(
             f"{supabase_url}/rest/v1/data_sources",
-            params={"source_key": "eq.licensed-odds"},
+            params={"source_key": "eq.api-football"},
             headers={
                 "apikey": service_key,
                 "Authorization": f"Bearer {service_key}",
