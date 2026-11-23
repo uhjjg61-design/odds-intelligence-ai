@@ -8,7 +8,8 @@ Open **Settings → Secrets and variables → Actions → New repository secret*
 
 - `API_FOOTBALL_KEY`: a current API-Football key with fixtures access.
 - `SUPABASE_URL`: `https://ljbapxbtuqahbaeytjri.supabase.co`.
-- `SUPABASE_SERVICE_ROLE_KEY`: the Supabase server-side service-role/secret key. Never use this in Vercel browser variables or commit it to Git.
+- `SUPABASE_SERVICE_ROLE_KEY`: the Supabase server-side service-role key. Never use this in Vercel browser variables or commit it to Git.
+- `API_BASKETBALL_KEY`: an API-Basketball key with games access. This can be the same API-Sports key only if the Basketball product is enabled for that account; otherwise use the separate key shown by the Basketball dashboard.
 
 The API-Football key was previously pasted into a chat. Rotate it at the provider before saving the replacement as a GitHub secret. Do not paste the replacement key into chat, issues, logs, or source files.
 
@@ -31,4 +32,7 @@ If a workflow reports that secrets are missing, verify the three names above exa
 
 ## Basketball
 
-Basketball is not yet ingesting data. The Supabase source registry identifies API-Basketball as requiring its own provider credentials. Add a separate `API_BASKETBALL_KEY` only after enabling the API-Basketball product/subscription; do not assume the football subscription covers it. A basketball ingestion job and sport-specific score/period mapping must be verified before the basketball source can be marked operational.
+- `Sync live basketball games` polls today's games about every 30 minutes.
+- `Sync historical basketball results` refreshes the previous 7 days and next 3 days daily; the manual workflow supports a 30-day initial backfill.
+- The ingestion stores total scores and each quarter/overtime score in `events.home_score`, `events.away_score`, and `events.period_scores`.
+- The Basketball API subscription has its own quota and coverage. The workflow safely skips until `API_BASKETBALL_KEY` is configured.
