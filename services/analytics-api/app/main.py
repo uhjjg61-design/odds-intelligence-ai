@@ -5,7 +5,7 @@ import hmac
 import math
 from datetime import date, datetime, timezone
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -108,7 +108,7 @@ def api_football_status():
 @app.post("/v1/providers/api-football/sync-fixtures")
 async def sync_api_football_fixtures(
     sync_date: date,
-    x_ingest_token: str = "",
+    x_ingest_token: str = Header(default="", alias="X-Ingest-Token"),
 ):
     expected_token = os.getenv("INGEST_API_TOKEN", "")
     api_key = os.getenv("API_FOOTBALL_KEY", "")
