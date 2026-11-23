@@ -1,42 +1,45 @@
-name: Sync sports fixtures and odds
+name: Sync live football fixtures
 
 on:
   schedule:
-    - cron: "23 */6 * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
-      days_ahead:
-        description: "Days ahead to sync (0-7)"
-        required: false
-        default: "2"
-      odds_max_fixtures:
-        description: "Upcoming fixtures to check for odds (0-10)"
-        required: false
-        default: "3"
+      sync_mode:
+        description: "Run live sync or a full historical backfill"
+        type: choice
+        required: true
+        default: "live"
+        options:
+          - live
+          - history
+          - full
 
 permissions:
   contents: read
 
 concurrency:
-  group: sports-ingestion
+  group: football-live-ingestion
   cancel-in-progress: false
 
 jobs:
-  sync-football:
+  sync-live:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      DAYS_AHEAD: ${{ inputs.days_ahead || '2' }}
-      ODDS_MAX_FIXTURES: ${{ inputs.odds_max_fixtures || '3' }}
+      SYNC_MODE: ${{ inputs.sync_mode || 'live' }}
+      HISTORY_DAYS: "7"
+      DAYS_AHEAD: "3"
+      ODDS_MAX_FIXTURES: "2"
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: Check whether provider credentials are configured
+      - name: Check provider credentials
         id: preflight
         shell: bash
         run: |
@@ -44,8 +47,13 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Ingestion skipped. Add API_FOOTBALL_KEY, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY as repository Actions secrets."
+            echo "::notice::Ingestion skipped. Configure API_FOOTBALL_KEY, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in repository Actions secrets."
           fi
-      - name: Sync API-Football data to Supabase
+      - name: Set up Python
+        if: steps.preflight.outputs.configured == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Sync fixtures
         if: steps.preflight.outputs.configured == 'true'
         run: python scripts/sync_api_football.py
