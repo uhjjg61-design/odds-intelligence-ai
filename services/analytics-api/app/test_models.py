@@ -47,3 +47,17 @@ def test_poisson_endpoint():
     response = client.post("/v1/models/football/poisson", json={"home_xg": 1.5, "away_xg": 1.0})
     assert response.status_code == 200
     assert response.json()["model"] == "independent_poisson"
+
+
+def test_provider_status_never_exposes_credentials():
+    response = client.get("/v1/providers/api-football/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert "configured" in body
+    assert "api_key" not in body
+    assert "SUPABASE_SERVICE_ROLE_KEY" not in str(body)
+
+
+def test_fixture_sync_requires_ingestion_token():
+    response = client.post("/v1/providers/api-football/sync-fixtures?sync_date=2026-11-23")
+    assert response.status_code == 401
