@@ -122,6 +122,7 @@ on conflict(id) do update set name=excluded.name;
 insert into public.data_sources(source_key,display_name,provider_type,status,coverage,metadata)
 values
  ('internal-demo','Synthetic demo feed','internal','disabled','[]'::jsonb,'{"is_demo":true,"note":"Synthetic data only; not a live provider."}'::jsonb),
+ ('api-football','API-Football fixtures','licensed','not_configured','["football"]'::jsonb,'{"requires_credentials":true,"fixture_sync":true}'::jsonb),
  ('licensed-odds','Licensed odds provider','licensed','not_configured','[]'::jsonb,'{"requires_credentials":true}'::jsonb),
  ('official-stats','Official sports statistics','official','not_configured','[]'::jsonb,'{"requires_credentials":true}'::jsonb)
 on conflict(source_key) do update set display_name=excluded.display_name,provider_type=excluded.provider_type;
