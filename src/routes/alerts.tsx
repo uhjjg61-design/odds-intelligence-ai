@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell, CheckCheck, Filter } from "lucide-react";
+import { Bell, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Panel, Warning, useFormatTime } from "@/components/app/ui-bits";
 import { alerts as demoAlerts } from "@/lib/demo-data";
