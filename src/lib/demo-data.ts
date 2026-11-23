@@ -13,7 +13,9 @@ const rnd = seeded(42);
 export type Sport = "football" | "basketball" | "tennis";
 export type SportEvent = {
   id: string; sport: Sport; league: string; home: string; away: string;
-  startsAt: string; status: "scheduled" | "live" | "finished"; markets: number;
+  startsAt: string; status: "scheduled" | "live" | "finished" | "cancelled" | "postponed"; markets: number;
+  homeScore?: number | null; awayScore?: number | null; halftimeHomeScore?: number | null; halftimeAwayScore?: number | null;
+  elapsedMinutes?: number | null; sourceUpdatedAt?: string | null;
 };
 export type Opportunity = {
   id: string; eventId: string; event: string; sport: Sport; market: string; selection: string;
