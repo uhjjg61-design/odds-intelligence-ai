@@ -40,7 +40,7 @@ def provider_get(path: str, params: dict):
     )
 
 
-def db_request(table: str, params: dict, payload=None, prefer="return=representation"):
+def db_request(table: str, params: dict, payload=None, prefer="return=representation", method=None):
     query = urlencode(params, doseq=True)
     headers = {
         "apikey": SUPABASE_KEY,
@@ -50,7 +50,7 @@ def db_request(table: str, params: dict, payload=None, prefer="return=representa
     if payload is not None:
         headers["Content-Type"] = "application/json"
         headers["Prefer"] = prefer
-    return request_json(f"{SUPABASE_URL}/rest/v1/{table}?{query}", headers, payload, "POST" if payload is not None else "GET")
+    return request_json(f"{SUPABASE_URL}/rest/v1/{table}?{query}", headers, payload, method or ("POST" if payload is not None else "GET"))
 
 
 def sync_fixtures(day: date):
@@ -217,7 +217,7 @@ def main():
             "fixtures_received": len(all_fixtures),
             "odds_snapshots_saved": odds_count,
         },
-    }], "return=minimal")
+    }], "return=minimal", "PATCH")
     print(f"Completed: {len(all_fixtures)} fixture records; {odds_count} odds snapshots.")
 
 
@@ -229,7 +229,7 @@ if __name__ == "__main__":
         try:
             db_request("data_sources", {"source_key": "eq.api-football"}, [{
                 "status": "degraded", "last_error": str(exc)[:1000],
-            }], "return=minimal")
+            }], "return=minimal", "PATCH")
         except Exception:
             pass
         raise
