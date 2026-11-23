@@ -323,3 +323,38 @@ async def sync_api_football_odds(
         "source": "API-Football",
         "note": "Odds availability depends on the provider plan and fixture coverage. Snapshots are timestamped and are not predictions.",
     }
+
+
+class TelegramTestRequest(BaseModel):
+    message: str = Field(default="Odds Intelligence AI: Telegram notifications are configured.", min_length=1, max_length=3500)
+
+
+@app.get("/v1/notifications/telegram/status")
+def telegram_status():
+    return {
+        "configured": bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")),
+        "delivery": "disabled_until_credentials_are_configured",
+        "automatic_alerts": False,
+    }
+
+
+@app.post("/v1/notifications/telegram/test")
+async def telegram_test(
+    payload: TelegramTestRequest,
+    x_ingest_token: str = "",
+):
+    expected_token = os.getenv("INGEST_API_TOKEN", "")
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+    if not expected_token or not hmac.compare_digest(x_ingest_token, expected_token):
+        raise HTTPException(status_code=401, detail="Invalid ingestion token")
+    if not bot_token or not chat_id:
+        raise HTTPException(status_code=503, detail="Telegram bot credentials are not configured")
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": chat_id, "text": payload.message, "disable_web_page_preview": True},
+        )
+        if response.status_code != 200 or not response.json().get("ok"):
+            raise HTTPException(status_code=502, detail="Telegram delivery failed")
+    return {"sent": True, "channel": "telegram", "automatic_alerts": False}
