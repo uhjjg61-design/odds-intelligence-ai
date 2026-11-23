@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { eventsQuery, sourcesQuery } from "@/lib/api";
+import { eventsQuery, sourcesQuery, IS_DEMO } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { pageHead } from "@/lib/seo";
 import { EmptyState, PageHeader, Panel, StatusDot, useFormatTime, Warning } from "@/components/app/ui-bits";
@@ -43,14 +43,16 @@ function Live() {
         actions={<Button size="sm" variant="outline" onClick={refresh}><RefreshCw />{t("تحديث القراءة", "Refresh data")}</Button>}
       />
       <Warning>
-        {t("لا نعرض احتمالات مباشرة هنا ما لم تصل أسعار سوق موثقة من مزود مرخّص. النتيجة المباشرة ليست سعراً للمراهنة.", "Live odds are not shown unless verified prices arrive from a licensed provider. A live score is not a betting price.")}
+        {IS_DEMO
+          ? t("وضع تجريبي: البيانات المعروضة ليست حقيقية. اربط إعدادات Supabase في Vercel لقراءة المباريات الفعلية.", "Demo mode: displayed fixtures are synthetic. Configure Supabase in Vercel to read real matches.")
+          : t("لا نعرض احتمالات مباشرة هنا ما لم تصل أسعار سوق موثقة من مزود مرخّص. النتيجة المباشرة ليست سعراً للمراهنة.", "Live odds are not shown unless verified prices arrive from a licensed provider. A live score is not a betting price.")}
       </Warning>
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Panel title={t("المباريات الجارية", "Matches in play")} className="lg:col-span-2">
-          {liveEvents.length === 0 ? (
+          {IS_DEMO || liveEvents.length === 0 ? (
             <EmptyState
-              title={t("لا توجد مباراة جارية مستوردة الآن", "No imported live fixtures right now")}
-              hint={t("ستظهر المباريات هنا بعد وصولها من API-Football وتشغيل مزامنة البيانات.", "Fixtures will appear after API-Football returns them and ingestion runs.")}
+              title={IS_DEMO ? t("لا يمكن عرض بيانات حية في الوضع التجريبي", "Live data is unavailable in demo mode") : t("لا توجد مباراة جارية مستوردة الآن", "No imported live fixtures right now")}
+              hint={IS_DEMO ? t("اربط Supabase في إعدادات النشر لإيقاف البيانات الاصطناعية.", "Connect Supabase in deployment settings to stop using synthetic data.") : t("ستظهر المباريات هنا بعد وصولها من API-Football وتشغيل مزامنة البيانات.", "Fixtures will appear after API-Football returns them and ingestion runs.")}
             />
           ) : (
             <ul className="divide-y divide-border">
@@ -91,8 +93,8 @@ function Live() {
       </div>
       <div className="mt-4">
         <Panel title={t("المباريات القادمة", "Upcoming fixtures")}>
-          {upcoming.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">{t("لا توجد مباريات قادمة في قاعدة البيانات بعد.", "No upcoming fixtures are in the database yet.")}</p>
+          {IS_DEMO || upcoming.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">{IS_DEMO ? t("المباريات التجريبية مخفية في شاشة المراقبة.", "Synthetic fixtures are hidden in the live monitor.") : t("لا توجد مباريات قادمة في قاعدة البيانات بعد.", "No upcoming fixtures are in the database yet.")}</p>
           ) : (
             <ul className="divide-y divide-border">
               {upcoming.map((event) => (
