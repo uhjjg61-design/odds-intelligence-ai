@@ -53,7 +53,8 @@ def provider_get_all(path: str, params: dict, max_pages: int = 10) -> list[dict]
     collected = []
     current, total = 0, 1
     for page in range(1, max_pages + 1):
-        result = provider_get(path, {**params, "page": page})
+        request_params = params if page == 1 else {**params, "page": page}
+        result = provider_get(path, request_params)
         collected.extend(result.get("response") or [])
         paging = result.get("paging") or {}
         current = int(paging.get("current") or page)
