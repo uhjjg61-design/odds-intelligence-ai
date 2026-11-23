@@ -35,4 +35,5 @@ If a workflow reports that secrets are missing, verify the three names above exa
 - `Sync live basketball games` polls today's games about every 30 minutes.
 - `Sync historical basketball results` refreshes the previous 7 days and next 3 days daily; the manual workflow supports a 30-day initial backfill.
 - The ingestion stores total scores and each quarter/overtime score in `events.home_score`, `events.away_score`, and `events.period_scores`.
+- The daily history job requests pre-match odds for at most two upcoming games when the provider plan returns them; it does not claim in-play odds.
 - The Basketball API subscription has its own quota and coverage. The workflow safely skips until `API_BASKETBALL_KEY` is configured.
