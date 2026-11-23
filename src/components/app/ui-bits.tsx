@@ -49,7 +49,7 @@ export function Stat({ label, value, hint, tone = "default" }: { label: string; 
   );
 }
 
-export function StatusDot({ status }: { status: "operational" | "degraded" | "not_configured" | "live" | "scheduled" | "finished" }) {
+export function StatusDot({ status }: { status: "operational" | "degraded" | "not_configured" | "live" | "scheduled" | "finished" | "cancelled" | "postponed" }) {
   const { t } = useI18n();
   const map = {
     operational: ["bg-success", t("يعمل", "Operational")],
@@ -58,6 +58,8 @@ export function StatusDot({ status }: { status: "operational" | "degraded" | "no
     live: ["bg-destructive animate-pulse", t("جارٍ", "In play")],
     scheduled: ["bg-info", t("مجدول", "Scheduled")],
     finished: ["bg-muted-foreground", t("انتهى", "Finished")],
+    cancelled: ["bg-muted-foreground", t("أُلغيت", "Cancelled")],
+    postponed: ["bg-warning", t("مؤجلة", "Postponed")],
   } as const;
   const [c, label] = map[status];
   return <span className="inline-flex items-center gap-1.5 text-xs"><span className={cn("size-2 rounded-full", c)} />{label}</span>;
